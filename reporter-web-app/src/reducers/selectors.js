@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2017-2019 HERE Europe B.V.
+ * Copyright (C) 2017-2020 HERE Europe B.V.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -18,129 +18,94 @@
  */
 
 import memoizeOne from 'memoize-one';
-import { UNIQUE_COLORS } from '../data/colors';
 
 const hasOrtResultChanged = (newArgs, oldArgs) => newArgs.length !== oldArgs.length
     || newArgs[0].data.reportLastUpdate !== oldArgs[0].data.reportLastUpdate;
 
 // ---- App selectors ----
 
-export const getAppView = state => state.app;
-export const getAppViewoading = state => state.app.loading;
-export const getAppViewShowKey = state => state.app.showKey;
+export const getAppView = (state) => state.app;
+export const getAppViewoading = (state) => state.app.loading;
+export const getAppViewShowKey = (state) => state.app.showKey;
 
 // ---- Data selectors ----
 
-export const getOrtResult = state => state.data.ortResult;
+export const getOrtResult = (state) => state.data.ortResult;
 
 // ---- SummaryView selectors ----
 
-const COLORS = UNIQUE_COLORS.data;
-const licenseColors = new Map();
-const getLicenseColor = (license) => {
-    if (licenseColors.has(license)) {
-        return licenseColors.get(license);
-    }
-
-    // License has no assigned color
-    const nrColors = COLORS.length;
-    const color = COLORS[licenseColors.size % nrColors];
-    licenseColors.set(license, color);
-
-    return color;
-};
-const getLicensesWithColors = licenses => Object.entries(licenses)
-    .reduce((accumulator, [key, value]) => {
-        accumulator.push({
-            name: key,
-            value,
-            color: getLicenseColor(key)
-        });
-
-        return accumulator;
-    }, []);
-const getLicensesWithNrPackages = (state, licensesProp) => {
-    const webAppOrtResult = getOrtResult(state);
-    const packages = webAppOrtResult.getPackages();
-    const nrPackagesByLicense = {};
-
-    if (packages) {
-        for (let i = packages.length - 1; i >= 0; i -= 1) {
-            const pkg = packages[i];
-            const licenses = pkg[licensesProp];
-
-            for (let j = licenses.length - 1; j >= 0; j -= 1) {
-                const license = licenses[j];
-                if (!nrPackagesByLicense[license]) {
-                    nrPackagesByLicense[license] = 0;
-                }
-
-                nrPackagesByLicense[license] += 1;
-            }
-        }
-
-        return nrPackagesByLicense;
-    }
-
-    return {};
-};
 export const getSummaryDeclaredLicenses = memoizeOne(
-    state => getLicensesWithColors(getLicensesWithNrPackages(state, 'declaredLicenses')),
+    (state) => {
+        const webAppOrtResult = getOrtResult(state);
+        const { declaredLicenseStats } = webAppOrtResult;
+
+        return Object.entries(declaredLicenseStats)
+            .reduce((accumulator, [name, value]) => {
+                const license = webAppOrtResult.getLicenseByName(name);
+
+                accumulator.push({
+                    name,
+                    value,
+                    color: license.color
+                });
+
+                return accumulator;
+            }, []);
+    },
     hasOrtResultChanged
 );
 export const getSummaryDeclaredLicensesChart = (state) => {
     const declaredLicenses = getSummaryDeclaredLicenses(state);
 
-    if (state.summary.licenses.declaredChart.length === 0 && declaredLicenses.length !== 0) {
+    if (state.summary.declaredLicensesChart.length === 0 && declaredLicenses.length !== 0) {
         return declaredLicenses;
     }
 
-    return state.summary.licenses.declaredChart;
+    return state.summary.declaredLicensesChart;
 };
-export const getSummaryDeclaredLicensesFilter = state => state.summary.licenses.declaredFilter;
-export const getSummaryDeclaredLicensesTotal = memoizeOne(
+export const getSummaryDeclaredLicensesFilter = (state) => state.summary.declaredLicensesFilter;
+export const getSummaryDetectedLicenses = memoizeOne(
     (state) => {
         const webAppOrtResult = getOrtResult(state);
-        const { declaredLicenses } = webAppOrtResult;
+        const { detectedLicenseStats } = webAppOrtResult;
 
-        return declaredLicenses.length;
+        return Object.entries(detectedLicenseStats)
+            .reduce((accumulator, [name, value]) => {
+                const license = webAppOrtResult.getLicenseByName(name);
+
+                accumulator.push({
+                    name,
+                    value,
+                    color: license.color
+                });
+
+                return accumulator;
+            }, []);
     },
-    hasOrtResultChanged
-);
-
-export const getSummaryDetectedLicenses = memoizeOne(
-    state => getLicensesWithColors(getLicensesWithNrPackages(state, 'detectedLicenses')),
     hasOrtResultChanged
 );
 export const getSummaryDetectedLicensesChart = (state) => {
     const detectedLicenses = getSummaryDetectedLicenses(state);
 
-    if (state.summary.licenses.detectedChart.length === 0 && detectedLicenses.length !== 0) {
+    if (state.summary.detectedLicensesChart.length === 0 && detectedLicenses.length !== 0) {
         return detectedLicenses;
     }
 
-    return state.summary.licenses.detectedChart;
+    return state.summary.detectedLicensesChart;
 };
-export const getSummaryDetectedLicensesFilter = state => state.summary.licenses.detectedFilter;
-export const getSummaryDetectedLicensesTotal = memoizeOne(
-    (state) => {
-        const webAppOrtResult = getOrtResult(state);
-        const { detectedLicenses } = webAppOrtResult;
+export const getSummaryDetectedLicensesFilter = (state) => state.summary.detectedLicensesFilter;
+export const getSummaryIssuesFilter = (state) => state.summary.issuesFilter;
+export const getSummaryRuleViolationsFilter = (state) => state.summary.ruleViolationsFilter;
 
-        return detectedLicenses.length;
-    },
-    hasOrtResultChanged
-);
-
-export const getSummaryView = state => state.summary;
-export const getSummaryViewShouldComponentUpdate = state => state.summary.shouldComponentUpdate;
+export const getSummaryView = (state) => state.summary;
+export const getSummaryViewShouldComponentUpdate = (state) => state.summary.shouldComponentUpdate;
 
 // ---- TableView selectors ----
 
-export const getTableView = state => state.table;
-export const getTableViewShouldComponentUpdate = state => state.table.shouldComponentUpdate;
+export const getTableView = (state) => state.table;
+export const getTableViewShouldComponentUpdate = (state) => state.table.shouldComponentUpdate;
 
 // ---- TreeView selectors ----
 
-export const getTreeView = state => state.tree;
-export const getTreeViewShouldComponentUpdate = state => state.tree.shouldComponentUpdate;
+export const getTreeView = (state) => state.tree;
+export const getTreeViewShouldComponentUpdate = (state) => state.tree.shouldComponentUpdate;

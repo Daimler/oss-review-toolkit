@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2019-2020 HERE Europe B.V.
+ * Copyright (C) 2020 HERE Europe B.V.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -17,26 +17,40 @@
  * License-Filename: LICENSE
  */
 
-class ScannerDetails {
+class IssueStatistics {
+    #errors = 0;
+
+    #hints = 0;
+
+    #warnings = 0;
+
     constructor(obj) {
-        this.name = '';
-        this.version = '';
-        this.configuration = '';
-
         if (obj instanceof Object) {
-            if (obj.name) {
-                this.name = obj.name;
+            if (obj.errors !== null) {
+                this.#errors = obj.errors;
             }
 
-            if (obj.version) {
-                this.version = obj.version;
+            if (obj.hints !== null) {
+                this.#hints = obj.hints;
             }
 
-            if (obj.configuration) {
-                this.configuration = obj.configuration;
+            if (obj.warnings !== null) {
+                this.#warnings = obj.warnings;
             }
         }
     }
+
+    get errors() {
+        return this.#errors;
+    }
+
+    get hints() {
+        return this.#hints;
+    }
+
+    get warnings() {
+        return this.#warnings;
+    }
 }
 
-export default ScannerDetails;
+export default IssueStatistics;

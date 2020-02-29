@@ -29,6 +29,7 @@ import {
     WarningOutlined
 } from '@ant-design/icons';
 
+import Markdown from 'markdown-to-jsx';
 import PackageDetails from './PackageDetails';
 import PackageLicenses from './PackageLicenses';
 import PackagePaths from './PackagePaths';
@@ -38,11 +39,11 @@ import ResolutionTable from './ResolutionTable';
 const { Panel } = Collapse;
 
 // Generates the HTML to display violations as a Table
-const IssuesTable = (props) => {
+const RuleViolationsTable = (props) => {
     const {
         filter,
-        issues,
         onChange,
+        ruleViolations,
         showExcludesColumn
     } = props;
     const {
@@ -50,7 +51,7 @@ const IssuesTable = (props) => {
     } = filter;
 
     // If return null to prevent React render error
-    if (!issues) {
+    if (!ruleViolations) {
         return null;
     }
 
@@ -101,7 +102,7 @@ const IssuesTable = (props) => {
                     value: 3
                 }
             ])(),
-            onFilter: (value, webAppOrtIssue) => webAppOrtIssue.severityIndex === value,
+            onFilter: (value, webAppRuleViolation) => webAppRuleViolation.severityIndex === value,
             sorter: (a, b) => {
                 if (a.severityIndex < b.severityIndex) {
                     return -1;
@@ -112,12 +113,12 @@ const IssuesTable = (props) => {
 
                 return 0;
             },
-            render: (text, webAppOrtIssue) => (
-                webAppOrtIssue.isResolved
+            render: (text, webAppRuleViolation) => (
+                webAppRuleViolation.isResolved
                     ? (
                         <Tooltip
                             placement="right"
-                            title={Array.from(webAppOrtIssue.resolutionReasons).join(', ')}
+                            title={Array.from(webAppRuleViolation.resolutionReasons).join(', ')}
                         >
                             <IssuesCloseOutlined
                                 className="ort-ok"
@@ -126,7 +127,7 @@ const IssuesTable = (props) => {
                     ) : (
                         <span>
                             {
-                                webAppOrtIssue.severity === 'ERROR'
+                                webAppRuleViolation.severity === 'ERROR'
                                 && (
                                     <ExclamationCircleOutlined
                                         className="ort-error"
@@ -134,7 +135,7 @@ const IssuesTable = (props) => {
                                 )
                             }
                             {
-                                webAppOrtIssue.severity === 'WARNING'
+                                webAppRuleViolation.severity === 'WARNING'
                                 && (
                                     <WarningOutlined
                                         className="ort-warning"
@@ -142,7 +143,7 @@ const IssuesTable = (props) => {
                                 )
                             }
                             {
-                                webAppOrtIssue.severity === 'HINT'
+                                webAppRuleViolation.severity === 'HINT'
                                 && (
                                     <InfoCircleOutlined
                                         className="ort-hint"
@@ -184,8 +185,8 @@ const IssuesTable = (props) => {
             filterMultiple: true,
             filteredValue: filteredInfo.excludes || null,
             key: 'excludes',
-            onFilter: (value, webAppOrtIssue) => {
-                const webAppPackage = webAppOrtIssue.package;
+            onFilter: (value, webAppRuleViolation) => {
+                const webAppPackage = webAppRuleViolation.package;
 
                 if (value === 'excluded') {
                     return webAppPackage.isExcluded;
@@ -197,8 +198,8 @@ const IssuesTable = (props) => {
 
                 return false;
             },
-            render: (webAppOrtIssue) => {
-                const webAppPackage = webAppOrtIssue.package;
+            render: (webAppRuleViolation) => {
+                const webAppPackage = webAppRuleViolation.package;
 
                 return webAppPackage.isExcluded ? (
                     <span className="ort-excludes">
@@ -226,6 +227,12 @@ const IssuesTable = (props) => {
             width: '25%'
         },
         {
+            dataIndex: 'rule',
+            key: 'rule',
+            title: 'Rule',
+            width: '25%'
+        },
+        {
             dataIndex: 'message',
             key: 'message',
             textWrap: 'word-break',
@@ -235,16 +242,16 @@ const IssuesTable = (props) => {
 
     return (
         <Table
-            className="ort-table-issues"
+            className="ort-table-rule-violations"
             columns={columns}
-            dataSource={issues}
+            dataSource={ruleViolations}
             expandedRowRender={
-                (webAppOrtIssue) => {
-                    const defaultActiveKey = [1];
-                    const webAppPackage = webAppOrtIssue.package;
+                (webAppRuleViolation) => {
+                    let defaultActiveKey = [0];
+                    const webAppPackage = webAppRuleViolation.package;
 
-                    if (webAppOrtIssue.isResolved) {
-                        defaultActiveKey.unshift(0);
+                    if (webAppRuleViolation.isResolved) {
+                        defaultActiveKey = [1];
                     }
 
                     return (
@@ -254,22 +261,30 @@ const IssuesTable = (props) => {
                             defaultActiveKey={defaultActiveKey}
                         >
                             {
-                                webAppOrtIssue.isResolved
+                                webAppRuleViolation.hasHowToFix()
                                 && (
-                                    <Panel header="Resolutions" key="0">
+                                    <Panel header="How to fix" key="0">
+                                        <Markdown>{webAppRuleViolation.howToFix}</Markdown>
+                                    </Panel>
+                                )
+                            }
+                            {
+                                webAppRuleViolation.isResolved
+                                && (
+                                    <Panel header="Resolutions" key="1">
                                         <ResolutionTable
-                                            resolutions={webAppOrtIssue.resolutions}
+                                            resolutions={webAppRuleViolation.resolutions}
                                         />
                                     </Panel>
                                 )
                             }
-                            <Panel header="Details" key="1">
+                            <Panel header="Details" key="2">
                                 <PackageDetails webAppPackage={webAppPackage} />
                             </Panel>
                             {
                                 webAppPackage.hasLicenses()
                                 && (
-                                    <Panel header="Licenses" key="2">
+                                    <Panel header="Licenses" key="3">
                                         <PackageLicenses webAppPackage={webAppPackage} />
                                     </Panel>
                                 )
@@ -277,7 +292,7 @@ const IssuesTable = (props) => {
                             {
                                 webAppPackage.hasPaths()
                                 && (
-                                    <Panel header="Paths" key="3">
+                                    <Panel header="Paths" key="4">
                                         <PackagePaths paths={webAppPackage.paths} />
                                     </Panel>
                                 )
@@ -285,7 +300,7 @@ const IssuesTable = (props) => {
                             {
                                 webAppPackage.hasFindings()
                                 && (
-                                    <Panel header="Scan Results" key="4">
+                                    <Panel header="Scan Results" key="5">
                                         <PackageFindingsTable
                                             webAppPackage={webAppPackage}
                                         />
@@ -297,7 +312,7 @@ const IssuesTable = (props) => {
                 }
             }
             locale={{
-                emptyText: 'No issues'
+                emptyText: 'No violations'
             }}
             onChange={onChange}
             pagination={
@@ -308,7 +323,7 @@ const IssuesTable = (props) => {
                     position: 'bottom',
                     showQuickJumper: true,
                     showSizeChanger: true,
-                    showTotal: (total, range) => `${range[0]}-${range[1]} of ${total} issues`
+                    showTotal: (total, range) => `${range[0]}-${range[1]} of ${total} violations`
                 }
             }
             rowKey="key"
@@ -317,15 +332,15 @@ const IssuesTable = (props) => {
     );
 };
 
-IssuesTable.propTypes = {
+RuleViolationsTable.propTypes = {
     filter: PropTypes.object.isRequired,
-    issues: PropTypes.array.isRequired,
     onChange: PropTypes.func.isRequired,
-    showExcludesColumn: PropTypes.bool
+    showExcludesColumn: PropTypes.bool,
+    ruleViolations: PropTypes.array.isRequired
 };
 
-IssuesTable.defaultProps = {
+RuleViolationsTable.defaultProps = {
     showExcludesColumn: true
 };
 
-export default IssuesTable;
+export default RuleViolationsTable;

@@ -92,6 +92,7 @@ object HelperMain : CommandWithHelp() {
             addCommand(MergeRepositoryConfigurationsCommand())
             addCommand(RemoveConfigurationEntriesCommand())
             addCommand(SortRepositoryConfigurationCommand())
+            addCommand(StorageListCommand())
             addCommand(VerifySourceArtifactCurationsCommand())
 
             parse(*args)
